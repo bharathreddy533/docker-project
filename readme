@@ -1,0 +1,248 @@
+This project demonstrates:
+
+Running arbitrary Python code inside Docker
+
+Preventing infinite loops, high CPU/memory usage
+
+Blocking network access
+
+Isolating file system access
+
+Returning clean API responses
+
+A small web UI to run code interactively
+
+📁 Project Structure
+project/
+│── app.py                 # Flask API
+│── requirements.txt       # Python dependencies
+│── templates/
+│     └── index.html       # Simple UI for running code
+│── venv/                  # Virtual environment (ignored in git)
+
+🧰 Features
+✅ 1. Execute Python Code Safely Using Docker
+
+User sends:
+
+POST /run
+{
+  "code": "print(2 + 2)"
+}
+
+
+API returns:
+
+{
+  "stdout": "4\n",
+  "stderr": "",
+  "exit_code": 0
+}
+
+✅ 2. Protection Against Common Attacks
+
+The Docker container is started with:
+
+--network none → No internet access
+
+--memory 128m → Stop memory bombs
+
+--pids-limit 64 → Stops fork bombs
+
+--cpus 0.5 → Limits CPU usage
+
+timeout 10 → Kills infinite loops
+
+--read-only → Blocks file writes
+
+Attacks prevented:
+Attack	Example Code	Result
+Infinite loop	while True: pass	Killed after 10 sec
+Memory bomb	"a" * 1000000000	Container OOM-killed
+Network access	requests.get(...)	Connection blocked
+File system write	open('/tmp/x','w')	Permission error
+🖥️ Simple Web UI
+
+Access:
+
+http://localhost:5000
+
+
+Features:
+
+Text area to write Python code
+
+“Run” button
+
+Output displayed below
+
+Works entirely through the /run API
+
+⚙️ Installation & Setup
+1️⃣ Install Python, pip, venv (Ubuntu / WSL)
+sudo apt update
+sudo apt install python3 python3-pip python3-venv -y
+
+2️⃣ Create and activate a virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+3️⃣ Install dependencies
+pip install -r requirements.txt
+
+4️⃣ Run the Flask server
+python app.py
+
+
+Server will start at:
+
+http://127.0.0.1:5000
+
+🐳 Docker Requirement
+
+You must have Docker installed and running.
+
+Test with:
+
+docker run hello-world
+
+
+If this doesn’t work, fix Docker first.
+
+🧪 Testing the API
+Basic test
+curl -X POST http://127.0.0.1:5000/run \
+  -H "Content-Type: application/json" \
+  -d '{"code": "print(2 + 2)"}'
+
+Timeout test
+curl -X POST http://127.0.0.1:5000/run \
+  -H "Content-Type: application/json" \
+  -d '{"code": "while True:\\n    pass"}'
+
+Memory test
+curl -X POST http://127.0.0.1:5000/run \
+  -H "Content-Type: application/json" \
+  -d '{"code": "x = \'a\' * 1000000000"}'
+
+Network block test
+curl -X POST http://127.0.0.1:5000/run \
+  -H "Content-Type: application/json" \
+  -d '{"code": "import requests; requests.get(\"http://google.com\")"}'
+
+🔐 Security Features Implemented
+1. Docker Isolation
+
+Containers run isolated from host
+
+Read-only filesystem (except controlled mount)
+
+No network access
+
+CPU, memory, PID limits
+
+2. Timeout Protection
+
+Even if user runs:
+
+while True:
+    pass
+
+
+Code is terminated after 10 seconds.
+
+3. Memory Protection
+
+Large allocations trigger Docker OOM kill.
+
+4. Code Size Limit
+
+Input code limited to 5000 characters.
+
+5. Output Size Limit
+
+Response output truncated to prevent log flooding.
+
+🧪 Security Experiments & Results
+Reading container files
+open("/etc/passwd").read()
+
+
+✔ Allowed
+Because /etc/passwd exists inside container (not host).
+
+Writing to file system
+open("/tmp/test.txt", "w").write("hack")
+
+
+❌ Fails
+Because container filesystem is read-only.
+
+Internet access
+import socket
+socket.create_connection(("google.com", 80))
+
+
+❌ Fails
+Because of --network none.
+
+📖 What I Learned
+
+Docker can isolate CPU, memory, network very effectively.
+
+--network none fully blocks external communication.
+
+--read-only is extremely effective in preventing any writes.
+
+Container filesystem access is still possible inside the image.
+
+Full sandboxing requires Docker + seccomp + dropping capabilities.
+
+Without extra hardening, Docker should not be treated as a full security sandbox — but it's excellent for this project.
+
+🎯 Future Improvements (Bonus)
+Easy
+
+Add JavaScript support (Node.js containers)
+
+Add output highlighting
+
+Add execution history
+
+Medium
+
+Build Dockerfile to run the API itself inside a container
+
+Allow multiple files (ZIP upload)
+
+Advanced
+
+Run containers as non-root user
+
+Add seccomp profile
+
+Explore gVisor / Firecracker for strong sandboxing
+
+📸 Screenshots (If needed for your project submission)
+
+You can add:
+
+UI screenshot
+
+Example output
+
+Security tests result
+
+✔ Final Notes
+
+This project demonstrates real-world concepts used in code runners like:
+
+Replit
+
+LeetCode
+
+HackerRank
+
+GitHub Codespaces
+
+and is a great learning foundation for DevOps & container security.
